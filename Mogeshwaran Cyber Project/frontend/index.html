@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Cybersecurity Detection & Response Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+margin:0;
+}
+
+.header{
+background:#020617;
+padding:15px;
+text-align:center;
+font-size:22px;
+}
+
+.container{
+padding:20px;
+}
+
+.flex{
+display:flex;
+gap:20px;
+}
+
+.card{
+background:#1e293b;
+padding:15px;
+border-radius:10px;
+flex:1;
+}
+
+.alert{
+padding:8px;
+margin:6px 0;
+border-radius:5px;
+font-size:14px;
+}
+
+.High{background:red;}
+.Medium{background:orange;}
+.Low{background:green;}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:10px;
+}
+
+th,td{
+padding:8px;
+border-bottom:1px solid #444;
+text-align:left;
+}
+
+.badge{
+padding:4px 8px;
+border-radius:5px;
+}
+
+.high{background:red;}
+.medium{background:orange;}
+.low{background:green;}
+
+.threat{
+font-size:20px;
+padding:10px;
+text-align:center;
+border-radius:5px;
+margin-top:10px;
+}
+
+.progress-bar{
+width:100%;
+background:#111827;
+border-radius:5px;
+margin-top:10px;
+}
+
+.progress{
+height:20px;
+background:#22c55e;
+width:0%;
+text-align:center;
+font-size:12px;
+border-radius:5px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+🔐 Cybersecurity Detection & Response Dashboard
+</div>
+
+<div class="container">
+
+<div class="flex">
+
+<div class="card">
+<h3>Total Alerts</h3>
+<h1 id="total">0</h1>
+</div>
+
+<div class="card">
+<h3>Last Alert</h3>
+<p id="last">None</p>
+</div>
+
+<div class="card">
+<h3>Cases</h3>
+<p>Open: <span id="open">0</span></p>
+<p>Closed: <span id="closed">0</span></p>
+</div>
+
+</div>
+
+<div class="card">
+<h3>Threat Level</h3>
+<div id="threatLevel" class="threat">LOW</div>
+</div>
+
+<div class="card">
+
+<h3>Network Vulnerability Scanner</h3>
+
+<div class="progress-bar">
+<div id="scanProgress" class="progress">0%</div>
+</div>
+
+</div>
+
+<div class="card">
+
+<h3>Open Alerts by Rule</h3>
+
+<table>
+
+<tr>
+<th>Rule</th>
+<th>Count</th>
+<th>Severity</th>
+</tr>
+
+<tr>
+<td>Malware Detection</td>
+<td id="malware">0</td>
+<td><span class="badge high">High</span></td>
+</tr>
+
+<tr>
+<td>Brute Force</td>
+<td id="brute">0</td>
+<td><span class="badge medium">Medium</span></td>
+</tr>
+
+<tr>
+<td>Port Scan</td>
+<td id="scan">0</td>
+<td><span class="badge low">Low</span></td>
+</tr>
+
+</table>
+
+</div>
+
+<div class="card">
+
+<h3>Live Alerts</h3>
+<div id="alerts"></div>
+
+</div>
+
+<div class="card">
+
+<h3>Snort Alert Logs</h3>
+
+<table id="logTable">
+
+<tr>
+<th>Time</th>
+<th>Source IP</th>
+<th>Type</th>
+<th>Severity</th>
+</tr>
+
+</table>
+
+</div>
+
+<div class="card">
+
+<h3>Attack Distribution</h3>
+
+<canvas id="attackChart"></canvas>
+
+</div>
+
+</div>
+
+<script>
+
+let total=0
+let open=0
+let closed=0
+
+let malware=0
+let brute=0
+let scan=0
+
+let progress=0
+
+const alerts=[
+
+{msg:"SQL Injection Attempt",type:"Malware Detection",sev:"High"},
+{msg:"Brute Force Login Attempt",type:"Brute Force",sev:"Medium"},
+{msg:"Port Scan Detected",type:"Port Scan",sev:"Low"},
+{msg:"Trojan Malware Communication",type:"Malware Detection",sev:"High"}
+
+]
+
+function randomIP(){
+
+return Math.floor(Math.random()*255)+"."+
+Math.floor(Math.random()*255)+"."+
+Math.floor(Math.random()*255)+"."+
+Math.floor(Math.random()*255)
+
+}
+
+const ctx=document.getElementById("attackChart")
+
+const attackChart=new Chart(ctx,{
+
+type:"bar",
+
+data:{
+labels:["Malware","Brute Force","Port Scan"],
+datasets:[{
+label:"Detected Attacks",
+data:[0,0,0]
+}]
+},
+
+options:{
+scales:{y:{beginAtZero:true}}
+}
+
+})
+
+function updateThreat(){
+
+let level=document.getElementById("threatLevel")
+
+if(total<10){
+
+level.innerText="LOW"
+level.style.background="green"
+
+}
+
+else if(total<20){
+
+level.innerText="MEDIUM"
+level.style.background="orange"
+
+}
+
+else{
+
+level.innerText="CRITICAL"
+level.style.background="red"
+
+}
+
+}
+
+function scanNetwork(){
+
+progress+=5
+
+if(progress>100){
+
+progress=0
+
+}
+
+let bar=document.getElementById("scanProgress")
+
+bar.style.width=progress+"%"
+bar.innerText=progress+"%"
+
+}
+
+setInterval(scanNetwork,500)
+
+function generateAlert(){
+
+let a=alerts[Math.floor(Math.random()*alerts.length)]
+
+let time=new Date().toLocaleTimeString()
+
+total++
+open++
+
+document.getElementById("total").innerText=total
+document.getElementById("open").innerText=open
+
+document.getElementById("last").innerText=a.msg+" ("+a.sev+")"
+
+if(a.type==="Malware Detection") malware++
+if(a.type==="Brute Force") brute++
+if(a.type==="Port Scan") scan++
+
+document.getElementById("malware").innerText=malware
+document.getElementById("brute").innerText=brute
+document.getElementById("scan").innerText=scan
+
+attackChart.data.datasets[0].data=[malware,brute,scan]
+attackChart.update()
+
+updateThreat()
+
+let div=document.createElement("div")
+
+div.className="alert "+a.sev
+
+div.innerHTML="["+time+"] "+a.msg
+
+document.getElementById("alerts").prepend(div)
+
+let row=`
+
+<tr>
+<td>${time}</td>
+<td>${randomIP()}</td>
+<td>${a.type}</td>
+<td>${a.sev}</td>
+</tr>
+
+`
+
+document.getElementById("logTable").innerHTML+=row
+
+if(Math.random()>0.6){
+
+open--
+closed++
+
+document.getElementById("open").innerText=open
+document.getElementById("closed").innerText=closed
+
+}
+
+}
+
+setInterval(generateAlert,2000)
+
+</script>
+
+</body>
+</html>
